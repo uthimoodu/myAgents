@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #111118;
+      --border:    #1e1e2e;
+      --accent:    #00e5ff;
+      --accent2:   #7b2fff;
+      --text:      #e8e8f0;
+      --muted:     #555570;
+      --user-bg:   #1a1a2e;
+      --bot-bg:    #0f1520;
+      --radius:    14px;
+      --font-main: 'Syne', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow orbs */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: -200px;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(123,47,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow-orb {
+      position: fixed;
+      bottom: -150px;
+      right: -150px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 800px;
+      padding: 36px 24px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(0,229,255,0.2);
+    }
+
+    .header-text h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .header-text p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    .status-dot {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* Tool badges */
+    .tools-bar {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 800px;
+      padding: 0 24px 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tool-badge {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--surface);
+      letter-spacing: 0.05em;
+    }
+
+    .tool-badge span { margin-right: 4px; }
+
+    /* Chat window */
+    .chat-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 800px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 24px;
+      gap: 0;
+    }
+
+    .chat-window {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 8px 0 24px;
+      min-height: 400px;
+      max-height: calc(100vh - 320px);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .chat-window::-webkit-scrollbar       { width: 4px; }
+    .chat-window::-webkit-scrollbar-track { background: transparent; }
+    .chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 16px;
+      padding: 60px 0;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state .big-icon {
+      font-size: 3rem;
+      opacity: 0.4;
+    }
+
+    .empty-state h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      opacity: 0.4;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    /* Suggestion chips */
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .chip {
+      font-size: 0.75rem;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-mono);
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,229,255,0.05);
+    }
+
+    /* Messages */
+    .message {
+      display: flex;
+      gap: 12px;
+      animation: fadeUp 0.3s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user  { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .message.user  .avatar { background: linear-gradient(135deg, var(--accent2), var(--accent)); }
+    .message.bot   .avatar { background: var(--surface); border: 1px solid var(--border); }
+
+    .bubble {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+
+    .message.user .bubble {
+      background: var(--user-bg);
+      border: 1px solid rgba(123,47,255,0.3);
+      border-radius: var(--radius) 4px var(--radius) var(--radius);
+      color: var(--text);
+    }
+
+    .message.bot .bubble {
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px var(--radius) var(--radius) var(--radius);
+      color: var(--text);
+    }
+
+    /* Tools used tag */
+    .tools-used {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tool-tag {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.2);
+      color: var(--accent);
+    }
+
+    /* Typing indicator */
+    .typing .bubble {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 14px 18px;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30%            { transform: translateY(-6px); background: var(--accent); }
+    }
+
+    /* Input area */
+    .input-area {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 800px;
+      padding: 16px 24px 32px;
+    }
+
+    .input-box {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-box:focus-within {
+      border-color: rgba(0,229,255,0.4);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.05);
+    }
+
+    textarea {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      resize: none;
+      max-height: 140px;
+      min-height: 24px;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    textarea::-webkit-scrollbar { display: none; }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 0 15px rgba(0,229,255,0.2);
+    }
+
+    .send-btn:hover:not(:disabled)  { opacity: 0.85; transform: scale(1.05); }
+    .send-btn:active:not(:disabled) { transform: scale(0.95); }
+    .send-btn:disabled               { opacity: 0.35; cursor: not-allowed; }
+
+    .send-btn svg { width: 16px; height: 16px; fill: white; }
+
+    .hint {
+      text-align: center;
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    /* Error message */
+    .error-bubble {
+      background: rgba(239,68,68,0.08) !important;
+      border-color: rgba(239,68,68,0.25) !important;
+      color: #fca5a5 !important;
+    }
+
+    /* Config banner */
+    .config-banner {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 24px 16px;
+      padding: 10px 16px;
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.25);
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: #fbbf24;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="glow-orb"></div>
+
+<!-- Header -->
+<header>
+  <div class="logo">🤖</div>
+  <div class="header-text">
+    <h1>AI Agent</h1>
+    <p>groq · web search · weather · math</p>
+  </div>
+  <div class="status-dot">
+    <div class="dot"></div>
+    online
+  </div>
+</header>
+
+<!-- Tools bar -->
+<div class="tools-bar">
+  <div class="tool-badge"><span>🌐</span>web search</div>
+  <div class="tool-badge"><span>🌤️</span>weather</div>
+  <div class="tool-badge"><span>🔢</span>math</div>
+  <div class="tool-badge"><span>⚡</span>groq llm</div>
+</div>
+
+<!-- Config warning if API URL not set -->
+<div class="config-banner" id="configBanner">
+  ⚠️ Set your Railway API URL in script config below (BACKEND_URL)
+</div>
+
+<!-- Chat -->
+<div class="chat-container">
+  <div class="chat-window" id="chatWindow">
+    <div class="empty-state" id="emptyState">
+      <div class="big-icon">✦</div>
+      <h2>Ask me anything</h2>
+      <p>I can search the web, check weather, and do math.</p>
+      <div class="suggestions">
+        <div class="chip" onclick="sendSuggestion(this)">Weather in London?</div>
+        <div class="chip" onclick="sendSuggestion(this)">What is 128 × 37?</div>
+        <div class="chip" onclick="sendSuggestion(this)">Latest news in AI?</div>
+        <div class="chip" onclick="sendSuggestion(this)">Humidity in Tokyo?</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+  <div class="input-box">
+    <textarea
+      id="questionInput"
+      placeholder="Ask a question..."
+      rows="1"
+      onkeydown="handleKey(event)"
+      oninput="autoResize(this)"
+    ></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+  <div class="hint">Press Enter to send · Shift+Enter for new line</div>
+</div>
+
+<script>
+  // ============================================================
+  // CONFIG — Replace with your Railway backend URL after deploy
+  // ============================================================
+  const BACKEND_URL = "https://your-railway-app.up.railway.app";
+  // ============================================================
+
+  const chatWindow    = document.getElementById("chatWindow");
+  const input         = document.getElementById("questionInput");
+  const sendBtn       = document.getElementById("sendBtn");
+  const emptyState    = document.getElementById("emptyState");
+  const configBanner  = document.getElementById("configBanner");
+
+  // Show config warning if URL not set
+  if (BACKEND_URL.includes("your-railway-app")) {
+    configBanner.style.display = "block";
+  }
+
+  function autoResize(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 140) + "px";
+  }
+
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function sendSuggestion(el) {
+    input.value = el.textContent;
+    autoResize(input);
+    sendMessage();
+  }
+
+  function removeEmptyState() {
+    if (emptyState && emptyState.parentNode) {
+      emptyState.remove();
+    }
+  }
+
+  function appendMessage(role, text, toolsUsed = []) {
+    removeEmptyState();
+
+    const msg = document.createElement("div");
+    msg.className = `message ${role}`;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "user" ? "👤" : "🤖";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+
+    // Show tools used for bot messages
+    if (role === "bot" && toolsUsed.length > 0) {
+      const tagsDiv = document.createElement("div");
+      tagsDiv.className = "tools-used";
+      const icons = { get_weather: "🌤️", search_web: "🌐", math_calculator: "🔢" };
+      toolsUsed.forEach(t => {
+        const tag = document.createElement("span");
+        tag.className = "tool-tag";
+        tag.textContent = (icons[t] || "🔧") + " " + t.replace("_", " ");
+        tagsDiv.appendChild(tag);
+      });
+      bubble.appendChild(tagsDiv);
+    }
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    chatWindow.appendChild(msg);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return msg;
+  }
+
+  function appendTyping() {
+    removeEmptyState();
+    const msg = document.createElement("div");
+    msg.className = "message bot typing";
+    msg.id = "typingIndicator";
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = "🤖";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    [1,2,3].forEach(() => {
+      const dot = document.createElement("div");
+      dot.className = "typing-dot";
+      bubble.appendChild(dot);
+    });
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    chatWindow.appendChild(msg);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typingIndicator");
+    if (el) el.remove();
+  }
+
+  async function sendMessage() {
+    const question = input.value.trim();
+    if (!question) return;
+
+    // Disable input while processing
+    input.value = "";
+    input.style.height = "auto";
+    sendBtn.disabled = true;
+    input.disabled = true;
+
+    // Show user message
+    appendMessage("user", question);
+
+    // Show typing indicator
+    appendTyping();
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        if (response.status === 429) {
+          throw new Error("⏳ " + (err.detail || "Too many requests. Please wait a moment."));
+        }
+        throw new Error(err.detail || "Server error");
+      }
+
+      const data = await response.json();
+      removeTyping();
+      appendMessage("bot", data.answer, data.tools_used || []);
+
+    } catch (err) {
+      removeTyping();
+      const errMsg = appendMessage("bot", `❌ Error: ${err.message}`);
+      errMsg.querySelector(".bubble").classList.add("error-bubble");
+    } finally {
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+</script>
+</body>
+</html>
