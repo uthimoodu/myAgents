@@ -282,10 +282,20 @@ def process_query_with_tools(user_question: str):
 
     messages = [
         SystemMessage(content="""You are a helpful assistant with access to tools.
-Use get_weather when asked about weather.
-Use search_web when asked about current events or information you don't know.
-Use math_calculator when asked to perform addition, subtraction, or multiplication.
-Always use tools when appropriate."""),
+You MUST follow these rules strictly:
+
+1. ALWAYS use search_web for ANY factual question about places, people, news, population, history or locations. Never answer from memory.
+2. ALWAYS use get_weather when asked about weather in any location.
+3. ALWAYS use math_calculator for ANY math operation — addition, subtraction or multiplication. Never calculate in your head.
+4. For complex questions with multiple parts, call ALL required tools — one for each part.
+5. NEVER answer factual questions from your own knowledge. ALWAYS use search_web instead.
+
+Examples:
+- "Where is Reading Gaol?" → use search_web
+- "What is the population of Reading?" → use search_web
+- "Double the population" → use math_calculator
+- "What is the weather in Reading?" → use get_weather
+"""),
         HumanMessage(content=user_question)
     ]
 
